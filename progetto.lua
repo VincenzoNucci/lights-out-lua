@@ -379,6 +379,7 @@ while(#open_list>0) do
 end
 
 print("fine while loop generale")
+
 print("the path to the solution is",solution)
 -- end_time = os.time()
 
