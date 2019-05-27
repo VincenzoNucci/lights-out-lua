@@ -83,9 +83,9 @@ function table_reverse(a)
 end
 
 -- given a 2D table, transforms it into a node for the A* algorithm
-function nodify(a,i,j)
-    local node = {board = a, row = i, column = j, toggled = 0, visited = 0, heuristic_f = 0, 
-        heuristic_g = 0, heuristic_h = 0, parent = nil, position = 0, sum = table_sum(a)}
+function nodify(a)
+    local node = { board = a, row = 1, column = 1, toggled = 0, visited = 0, heuristic_f = 0, 
+        heuristic_g = 0, heuristic_h = 0, parent = nil }
     return node
 end
 
@@ -95,7 +95,7 @@ function append(list,node)
     --list[list_length] = node
     --node["position"] = list_length
     table.insert(list,node)
-    node["position"] = #list
+    
 end
 
 -- given a list, return and remove the node in the first position
@@ -128,16 +128,16 @@ function pop(list,index)
 end
 
 function dequeue_lowest_f(list)
-    local i = 1
+    local j = 1
     local min_f = 10000000
-    local node = nil
     for i = 1,#list,1 do
         if list[i]["heuristic_f"] < min_f then
-            min_f = list[i]["heuristic_f"]
-            node = list[i]
+            j = i
+            
         end
     end
-    return node,min_f
+    
+    return list[j]["heuristic_f"],table.remove(list,j)
 end
 
 function search_node(list,node)
@@ -151,11 +151,8 @@ function search_node(list,node)
       return false
   end
 
-function toggle_lights(node)
+function toggle_lights(node,i,j)
   local a = node["board"]
-  local i = node["row"]
-    local j = node["column"]
-  
   local light_positions = {{-1,0},{0,0},{1,0},{0,-1},{0,1}}
             -- for each neighbor in the 4 directions and the central cell do...
             for _,light_position in pairs(light_positions) do
@@ -176,40 +173,22 @@ function toggle_lights(node)
                     end
                 end
             end
-  node["toggled"] = 1
+    node["toggled"] = 1
+    return shallowCopy(a)
   end
 
-function append_adjacent_nodes(list,node)
-    local i = node["row"]
-    local j = node["column"]
-    toggle_lights(node)
-    -- the positions of the 8 adjacent nodes
-    local positions = { {-1,-1}, {-1,0}, {-1, 1}, {0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}}
-    -- each position is a neighbor node, so for each neighbor node do...
-    for _,position in pairs(positions) do
-        local tmp_row = i + position[1]
-        local tmp_col = j + position[2]
-        -- if the coordinates of the neighbor are not out of bound...
-        if tmp_row >= 1 and tmp_row <= 5 and tmp_col >= 1 and tmp_col <= 5 then
-            -- local board of a single neighbor that will be toggled
-            local new_board = shallowCopy(node["board"])
-            -- positions of the 4 neighbors and the central light that must be toggled
-            
-            
-            -- create a new node with the modified board
-            local new_adjacent_node = nodify(new_board,tmp_row,tmp_col)
-            -- RIVEDERE IL TOGGLE CHE NON MI FA AGGIUNGERE NODI ALLA OPEN_LIST
-            --new_adjacent_node["toggled"] = 1
-            --print(tmp_row)
-            --print(tmp_col)
-            -- set this further step in solution as neighbor of current node
-            new_adjacent_node["parent"] = node
-            --append(list,new_adjacent_node)
-            table.insert(list,new_adjacent_node)
-            --print(new_adjacent_node["board"])
-            -- print(new_adjacent_node["sum"])
-            -- sleep(2)
-        end
+function append_possible_boards(list,node)
+  --[[per ogni casella nella matrice, prendila, togglagli le luci e mettila come nuvoa board quindi come nuovo figlio del nodo di partenza]]
+
+    -- each cell creates a neighbor board, so for each cell toggle it and create the matrix with that cell toggled...
+    -- after that add it to the list of neighbors
+    for i=1,#node["board"],1 do
+      for j=1,#node["board"][i],1 do
+        child_board = toggle_lights(node,i,j)
+        child_node = nodify(child_board)
+        child_node["parent"] = node
+        append(list,child_node)
+      end
     end
 end
 
@@ -222,17 +201,15 @@ function check_node_equality(node1,node2)
   return true
 end
 
-function calculate_h(node,goal_node)
+function calculate_h(node)
+    
     -- for now the heuristic function is how much is left to reach 0
     -- local current_sum = node["sum"]
     -- local goal_sum = goal_node["sum"]
     -- to get the solution, sum must reach 0
     --return manhattan_distance(current_sum,goal_sum)
     --return node["sum"]
-    local light_positions = {{-1,0},{0,0},{1,0},{0,-1},{0,1}}
-    for _,light_position in light_positions do
-      
-      end
+    return 5 + table_sum(node["board"])
 end
 
 function manhattan_distance(node,goal_node)
@@ -250,10 +227,6 @@ function diagonal_distance(node,goal_node)
 end
 
 
-function min_f_score(list)
-  
-end
-
 light_on = 1
 light_off = 0
 
@@ -266,13 +239,17 @@ board_height = 5
 board_width = 5
 
 -- fixed starting board
-board =   {{0, 1, 0, 1, 0 },
-          { 1, 1, 0, 0, 0 },
-          { 1, 0, 0, 0, 0 },
-          { 1, 1, 1, 0, 0 },
-          { 1, 0, 1, 1, 1 }}
+start_board =   {{0, 1, 0, 1, 0 },
+                { 1, 1, 0, 0, 0 },
+                { 1, 0, 0, 0, 0 },
+                { 1, 1, 1, 0, 0 },
+                { 1, 0, 1, 1, 1 }}
 
-
+end_board =     {{0, 0, 0, 0, 0 },
+                { 0, 0, 0, 0, 0 },
+                { 0, 0, 0, 0, 0 },
+                { 0, 0, 0, 0, 0 },
+                { 0, 0, 0, 0, 0 }}
 --[[random starting board
 board = {}          -- create the matrix
     for i=1,board_width,1 do
@@ -288,7 +265,7 @@ board = {}          -- create the matrix
     end
 ]]
 
-table_print(board,board_width,board_height)
+table_print(start_board,board_width,board_height)
 
 -- applying A* algorithm to get the solution
     -- first contains the index of the first element to remove
@@ -305,14 +282,13 @@ closed_list = {}
 -- the end node is the matrix with all the values for nodes put to 0 (sum is 0)
 
 -- start_node = nodify(board,random row, random column)
-start_node = nodify(board,1,1)
+start_node = nodify(start_board)
 append(open_list,start_node)
 
 data_table_print(open_list)
 
 
-end_node = nodify(board,_,_)
-end_node["sum"] = 0
+end_node = nodify(end_board)
 
 -- data_table_print(end_node)
 -- print("open_list:")
@@ -321,17 +297,15 @@ while(#open_list>0) do
     print("inizio while loop generale")
     --moves = moves + 1
     -- obtain the node with the lowest cost f
-    local current_node = dequeue_lowest_f(open_list)
-    print(current_node["row"])
-    print(current_node["column"])
+    local current_min_f,current_node = dequeue_lowest_f(open_list)
     print("open_list no.",#open_list)
     -- print("current_node:")
     -- data_table_print(current_node)
 
-    local current_index = current_node["position"]
+    --local current_index = current_node["position"]
     --print("current_index",current_index)
 
-    pop(open_list,current_index)
+    --pop(open_list,current_index)
     -- print("open_list:")
     -- data_table_print(open_list)
     current_node["visited"] = 1
@@ -340,7 +314,7 @@ while(#open_list>0) do
     -- data_table_print(closed_list)
 
     -- Found the goal
-    if current_node["sum"] == 0 then 
+    if table_sum(current_node["board"]) == 0 then 
         print("solution found")
         path = {}
         local current = current_node
@@ -354,16 +328,15 @@ while(#open_list>0) do
 
     -- else generate children
     children = {}
-    -- and append the 8 neighbors of the current_node
-    append_adjacent_nodes(children,current_node)
+    -- and append the 25 possible board evolutions of the current board
+    append_possible_boards(children,current_node)
     print("children no: ",#children)
     for _,child in pairs(children) do
         -- il child non è nella closed_list ovvero non è stato ancora visitato
-        local node,min_f = dequeue_lowest_f(open_list)
-            if not search_node(open_list,child) and child["visited"] == 0 and child["toggled"] == 0 and child["heuristic_f"] <= min_f then
+            if child["visited"] == 0 and child["toggled"] == 0 and child["heuristic_f"] <= current_min_f then
                 -- plus 1 is the distance between the current_node and the child
                 child["heuristic_g"] = current_node["heuristic_g"] + 1
-                child["heuristic_h"] = calculate_h(child,end_node)
+                child["heuristic_h"] = calculate_h(child)
                 child["heuristic_f"] = child["heuristic_g"] + child["heuristic_h"]
                 append(open_list,child)
                 
