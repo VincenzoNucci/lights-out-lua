@@ -135,19 +135,6 @@ function compare_h_cost(a,b)
     return a.h_cost < b.h_cost
 end
 
-function dequeue_lowest_f(list)
-    local j = 1
-    local min_f = 10000000
-    for i = 1,#list,1 do
-        if list[i].f_cost < min_f then
-            j = i
-            
-        end
-    end
-    
-    return list[j].f_cost,table.remove(list,j)
-end
-
 function toggle_lights(node,i,j)
   local a = node.board
   local light_positions = {{-1,0},{0,0},{1,0},{0,-1},{0,1}}
@@ -183,6 +170,7 @@ function append_possible_boards(list,node)
       for j=1,#node.board[i],1 do
         child_board = toggle_lights(node,i,j)
         child_node = nodify(child_board)
+        child_node.toggled = 1
         child_node.parent = node
         append(list,child_node)
       end
@@ -329,7 +317,7 @@ while(#open_list>0) do
       child = dequeue(children)
       local min_h_cost = child.h_cost
         -- il problema è che inserisce di continuo figli senza mai andare avanti e loopa all'infinito 
-            if child["visited"] == 0 and child["toggled"] == 0 and child["f_cost"] <= current_min_f and child.h_cost <= min_h_cost then
+            if child["visited"] == 0 and child["f_cost"] <= current_min_f and child.h_cost <= min_h_cost then
                 -- plus 1 is the distance between the current_node and the child
                 child["g_cost"] = current_node["g_cost"] + 1
                 child["h_cost"] = calculate_h(child)
