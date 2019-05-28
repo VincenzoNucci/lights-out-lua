@@ -84,8 +84,8 @@ end
 
 -- given a 2D table, transforms it into a node for the A* algorithm
 function nodify(a)
-    local node = { board = a, row = 1, column = 1, toggled = 0, visited = 0, heuristic_f = 0, 
-        heuristic_g = 0, heuristic_h = 0, parent = nil }
+    local node = { board = a, row = 0, column = 0, toggled = 0, visited = 0, f_cost = 0, 
+        g_cost = 0, h_cost = 0, parent = nil }
     return node
 end
 
@@ -127,32 +127,29 @@ function pop(list,index)
     return table.remove(list,index)
 end
 
+function compare_f_cost(a,b)
+    return a.f_cost < b.f_cost
+end
+
+function compare_h_cost(a,b)
+    return a.h_cost < b.h_cost
+end
+
 function dequeue_lowest_f(list)
     local j = 1
     local min_f = 10000000
     for i = 1,#list,1 do
-        if list[i]["heuristic_f"] < min_f then
+        if list[i].f_cost < min_f then
             j = i
             
         end
     end
     
-    return list[j]["heuristic_f"],table.remove(list,j)
+    return list[j].f_cost,table.remove(list,j)
 end
 
-function search_node(list,node)
-    local i = node["row"]
-    local j = node["column"]
-    for i=1,#list do
-        if list[i]["row"] == i and list[i]["column"] == j then
-          return true
-          end
-      end
-      return false
-  end
-
 function toggle_lights(node,i,j)
-  local a = node["board"]
+  local a = node.board
   local light_positions = {{-1,0},{0,0},{1,0},{0,-1},{0,1}}
             -- for each neighbor in the 4 directions and the central cell do...
             for _,light_position in pairs(light_positions) do
@@ -173,7 +170,7 @@ function toggle_lights(node,i,j)
                     end
                 end
             end
-    node["toggled"] = 1
+    node.toggled = 1
     return shallowCopy(a)
   end
 
@@ -182,23 +179,14 @@ function append_possible_boards(list,node)
 
     -- each cell creates a neighbor board, so for each cell toggle it and create the matrix with that cell toggled...
     -- after that add it to the list of neighbors
-    for i=1,#node["board"],1 do
-      for j=1,#node["board"][i],1 do
+    for i=1,#node.board,1 do
+      for j=1,#node.board[i],1 do
         child_board = toggle_lights(node,i,j)
         child_node = nodify(child_board)
-        child_node["parent"] = node
+        child_node.parent = node
         append(list,child_node)
       end
     end
-end
-
-function check_node_equality(node1,node2)
-  for key,value in pairs(node1) do
-    if node2.key ~= key or node2[key] ~= value then
-      return false
-    end
-  end
-  return true
 end
 
 function calculate_h(node)
@@ -209,7 +197,7 @@ function calculate_h(node)
     -- to get the solution, sum must reach 0
     --return manhattan_distance(current_sum,goal_sum)
     --return node["sum"]
-    return 5 + table_sum(node["board"])
+    return 5 + table_sum(node.board)
 end
 
 function manhattan_distance(node,goal_node)
@@ -297,7 +285,10 @@ while(#open_list>0) do
     print("inizio while loop generale")
     --moves = moves + 1
     -- obtain the node with the lowest cost f
-    local current_min_f,current_node = dequeue_lowest_f(open_list)
+    table.sort(open_list,compare_f_cost)
+    current_node = dequeue(open_list)
+    local current_min_f = current_node.f_cost
+    print("current min_f:",current_min_f)
     print("open_list no.",#open_list)
     -- print("current_node:")
     -- data_table_print(current_node)
@@ -331,13 +322,18 @@ while(#open_list>0) do
     -- and append the 25 possible board evolutions of the current board
     append_possible_boards(children,current_node)
     print("children no: ",#children)
-    for _,child in pairs(children) do
-        -- il child non è nella closed_list ovvero non è stato ancora visitato
-            if child["visited"] == 0 and child["toggled"] == 0 and child["heuristic_f"] <= current_min_f then
+    -- selezionare il child con l'h cost minore
+    table.sort(children,compare_h_cost)
+    
+    while #children > 0 do
+      child = dequeue(children)
+      local min_h_cost = child.h_cost
+        -- il problema è che inserisce di continuo figli senza mai andare avanti e loopa all'infinito 
+            if child["visited"] == 0 and child["toggled"] == 0 and child["f_cost"] <= current_min_f and child.h_cost <= min_h_cost then
                 -- plus 1 is the distance between the current_node and the child
-                child["heuristic_g"] = current_node["heuristic_g"] + 1
-                child["heuristic_h"] = calculate_h(child)
-                child["heuristic_f"] = child["heuristic_g"] + child["heuristic_h"]
+                child["g_cost"] = current_node["g_cost"] + 1
+                child["h_cost"] = calculate_h(child)
+                child["f_cost"] = child["g_cost"] + child["h_cost"]
                 append(open_list,child)
                 
                   --[[ se il child non è stato togglato, posso visitare i suoi vicini
@@ -347,7 +343,6 @@ while(#open_list>0) do
                     ]]
                 
             end
-             
     end
 end
 
